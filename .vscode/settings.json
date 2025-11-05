@@ -25,6 +25,11 @@
     "inmp441.h": "c",
     "app_init.h": "c",
     "esp_log.h": "c",
-    "queue.h": "c"
+    "queue.h": "c",
+    "max98367a.h": "c",
+    "math.h": "c",
+    "main.h": "c",
+    "i2s_std.h": "c",
+    "task.h": "c"
   }
 }

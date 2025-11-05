@@ -559,6 +559,11 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
+  include("E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/MAX98367A/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
   include("E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/INMP441/cmake_install.cmake")
 endif()
 

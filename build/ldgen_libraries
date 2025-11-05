@@ -84,4 +84,5 @@ E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/touch_element
 E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/usb/libusb.a
 E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/wifi_provisioning/libwifi_provisioning.a
 E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/main/libmain.a
+E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/MAX98367A/libMAX98367A.a
 E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/INMP441/libINMP441.a

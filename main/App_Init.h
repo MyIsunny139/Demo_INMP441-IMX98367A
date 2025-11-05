@@ -10,7 +10,7 @@
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 #include "INMP441.h"
-
+#include "MAX98367A.h"
 #define GPIO_OUTPUT_IO_0    GPIO_NUM_10
 #define GPIO_OUTPUT_IO_1    GPIO_NUM_11
 #define FULL_EVENT_BIT0    BIT0    // Bit for full event

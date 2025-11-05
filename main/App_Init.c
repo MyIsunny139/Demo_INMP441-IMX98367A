@@ -6,6 +6,9 @@ QueueHandle_t audio_data_queue = NULL;    // Queue for audio data transmission
 
 void app_init()
 {
+
+    i2s_rx_init();
+    i2s_tx_init();
     gpio_Init();
     ledc_Init();
     
@@ -14,8 +17,7 @@ void app_init()
     if (audio_data_queue == NULL) {
         ESP_LOGE("APP_INIT", "Failed to create audio data queue");
     }
-    
-    INMP441_Init();    // 初始化INMP441麦克风模块
+
 }
 
 void gpio_Init(void)
