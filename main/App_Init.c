@@ -100,3 +100,8 @@ void ledc_Init(void)
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT); //启动渐变
 }
 
+
+void Wifi_Init(void)
+{
+    
+}

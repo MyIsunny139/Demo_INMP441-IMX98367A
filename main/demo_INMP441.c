@@ -38,7 +38,7 @@ void led_run_task(void *pvParameters)
         /* 回调已在 app_main 中注册，避免在循环中重复注册 */
         vTaskDelay(pdMS_TO_TICKS(500)); // Delay for visibility
     }
-    return;
+    vTaskDelete(NULL);
 }
 
 uint8_t buf[BUF_SIZE];
@@ -62,7 +62,7 @@ void i2s_read_send_task(void *pvParameters)
 void app_main(void)
 {
     app_init();
-    
+
 
     BaseType_t ret1 = xTaskCreatePinnedToCore(led_run_task, "led_run_task", 2048, NULL, 10, NULL, 0);
     if (ret1 != pdPASS) {

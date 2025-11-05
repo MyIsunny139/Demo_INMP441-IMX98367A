@@ -3,12 +3,20 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "driver/uart.h"
+
+#include "esp_wifi.h"
 #include "esp_log.h"
 #include <stdio.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
+
+
+#include "lwip/err.h"
+#include "lwip/sockets.h"
+
 #include "INMP441.h"
 #include "MAX98367A.h"
 #define GPIO_OUTPUT_IO_0    GPIO_NUM_10
