@@ -1,0 +1,30 @@
+{
+  "idf.pythonInstallPath": "E:\\soft\\Espressif\\tools\\idf-python\\3.11.2\\python.exe",
+  "idf.openOcdConfigs": [
+    "board/esp32s3-builtin.cfg"
+  ],
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32s3"
+  },
+  "clangd.path": "E:\\soft\\Espressif\\tools\\esp-clang\\esp-18.1.2_20240912\\esp-clang\\bin\\clangd.exe",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=E:\\soft\\Espressif\\tools\\xtensa-esp-elf\\esp-14.2.0_20241119\\xtensa-esp-elf\\bin\\xtensa-esp32s3-elf-gcc.exe",
+    "--compile-commands-dir=e:\\soft\\ESP-project\\esp32-demo-Assembly\\demo_INMP441\\build"
+  ],
+  "idf.flashType": "UART",
+  "idf.portWin": "COM11",
+  "files.associations": {
+    "event_groups.h": "c",
+    "init.h": "c",
+    "gpio.h": "c",
+    "stdio.h": "c",
+    "ledc.h": "c",
+    "freertos.h": "c",
+    "uart.h": "c",
+    "inmp441.h": "c",
+    "app_init.h": "c",
+    "esp_log.h": "c",
+    "queue.h": "c"
+  }
+}
