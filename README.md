@@ -24,22 +24,10 @@ wss_recv_task：专门负责接收消息
 
 任务架构
 Core 0 上的任务（音频处理）：
-led_run_task（优先级 10）
+led_run_task（优先级 10）监听 LEDC 事件，控制 LED 和 PWM 渐变；
+i2s_read_send_task（优先级 9）：I2S 音频数据读取，实时音频回放；
 
-监听 LEDC 事件
-控制 LED 和 PWM 渐变
-i2s_read_send_task（优先级 9）
-
-I2S 音频数据读取
-实时音频回放
 Core 1 上的任务（网络通信）：
-wss_client_task（优先级 5）
-
-WebSocket 连接初始化
-连接管理和监控
-wss_send_task（优先级 5）
-
-WebSocket 消息发送
-wss_recv_task（优先级 5）
-
-WebSocket 消息接收
+wss_client_task（优先级 5）：WebSocket 连接初始化，连接管理和监控；
+wss_send_task（优先级 5）：WebSocket 消息发送
+wss_recv_task（优先级 5）：WebSocket 消息接收
