@@ -6,6 +6,11 @@
 
 #include "esp_wifi.h"
 #include "esp_log.h"
+#include "esp_err.h"
+#include "esp_event.h"
+#include "esp_netif.h"
+#include "esp_system.h"
+#include "esp_chip_info.h"
 #include <stdio.h>
 
 #include "freertos/FreeRTOS.h"
@@ -13,16 +18,23 @@
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 
+#include "nvs_flash.h"
 
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 
 #include "INMP441.h"
 #include "MAX98367A.h"
+
+
 #define GPIO_OUTPUT_IO_0    GPIO_NUM_10
 #define GPIO_OUTPUT_IO_1    GPIO_NUM_11
 #define FULL_EVENT_BIT0    BIT0    // Bit for full event
 #define EMPTY_EVENT_BIT1    BIT1    // Bit for empty event
+
+#define CON_SSID    	"MY_AP"
+#define CON_PASSWORD    "my666666"
+#define TAG "wifi_sta"
 
 
 extern QueueHandle_t ledc_queue;    // Queue for LEDC events
@@ -35,7 +47,7 @@ void gpio_Init(void);
 
 void ledc_Init(void);
 
-void i2s_Init(void);
+void wifi_Init(void);
 
 
 #endif

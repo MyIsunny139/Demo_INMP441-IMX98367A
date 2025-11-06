@@ -71,15 +71,15 @@ void app_main(void)
         ESP_LOGI("MAIN", "led_run_task created successfully");
     }
 
-
-
-
     BaseType_t ret2 = xTaskCreatePinnedToCore(i2s_read_send_task, "i2s_read_send_task", 4096, NULL, 9, NULL, 0);
     if (ret2 != pdPASS) {
         ESP_LOGE("MAIN", "Failed to create i2s_read_send_task");
     }else {
         ESP_LOGI("MAIN", "i2s_read_send_task created successfully");
     }
+
+    
+
 }
 
 

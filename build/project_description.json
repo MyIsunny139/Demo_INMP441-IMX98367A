@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "demo_INMP441",
-    "project_version":    "20e369f-dirty",
+    "project_version":    "60a3d6a-dirty",
     "project_path":       "E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441",
     "idf_path":           "E:/soft/Espressif/frameworks/esp-idf-v5.4.2",
     "build_dir":          "E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build",
