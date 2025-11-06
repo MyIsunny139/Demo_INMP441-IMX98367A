@@ -30,6 +30,8 @@
     "math.h": "c",
     "main.h": "c",
     "i2s_std.h": "c",
-    "task.h": "c"
+    "task.h": "c",
+    "wss_client.h": "c",
+    "unistd.h": "c"
   }
 }

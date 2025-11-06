@@ -856,3 +856,10 @@ E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/INMP441/CMake
 E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/INMP441/CMakeFiles/install.dir
 E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/INMP441/CMakeFiles/install/local.dir
 E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/INMP441/CMakeFiles/install/strip.dir
+E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/wss_client/CMakeFiles/__idf_wss_client.dir
+E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/wss_client/CMakeFiles/edit_cache.dir
+E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/wss_client/CMakeFiles/rebuild_cache.dir
+E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/wss_client/CMakeFiles/list_install_components.dir
+E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/wss_client/CMakeFiles/install.dir
+E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/wss_client/CMakeFiles/install/local.dir
+E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/wss_client/CMakeFiles/install/strip.dir

@@ -25,7 +25,7 @@
 
 #include "INMP441.h"
 #include "MAX98367A.h"
-
+#include "wss_client.h"
 
 #define GPIO_OUTPUT_IO_0    GPIO_NUM_10
 #define GPIO_OUTPUT_IO_1    GPIO_NUM_11
@@ -35,6 +35,8 @@
 #define CON_SSID    	"MY_AP"
 #define CON_PASSWORD    "my666666"
 #define TAG "wifi_sta"
+#define WEBSOCKET_SERVER_URI "ws://echo.websocket.events"
+
 
 
 extern QueueHandle_t ledc_queue;    // Queue for LEDC events
@@ -44,10 +46,11 @@ extern QueueHandle_t audio_data_queue;    // Queue for audio data transmission
 
 void app_init(void);
 void gpio_Init(void);
-
 void ledc_Init(void);
-
 void wifi_Init(void);
+void on_ws_message(const char *msg, size_t len);
+void wss_Init(void);
+
 
 
 #endif

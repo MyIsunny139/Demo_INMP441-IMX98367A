@@ -86,3 +86,4 @@ $<TARGET_FILE:__idf_wifi_provisioning>
 $<TARGET_FILE:__idf_main>
 $<TARGET_FILE:__idf_MAX98367A>
 $<TARGET_FILE:__idf_INMP441>
+$<TARGET_FILE:__idf_wss_client>

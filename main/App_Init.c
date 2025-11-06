@@ -12,6 +12,8 @@ void app_init()
     gpio_Init();
     ledc_Init();
     wifi_Init();
+    vTaskDelay(5000/portTICK_PERIOD_MS);    // Delay for 5 seconds
+    wss_Init();
     // 创建音频数据队列，每个元素256个采样点
 
 
@@ -97,6 +99,8 @@ void ledc_Init(void)
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT); //启动渐变
 }
 
+
+
 void event_handle(void* event_handler_arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
     if(event_base == WIFI_EVENT)
@@ -127,6 +131,8 @@ void event_handle(void* event_handler_arg, esp_event_base_t event_base, int32_t 
         }
     }
 }
+
+
 
 
 void wifi_Init(void)
@@ -211,4 +217,19 @@ void wifi_Init(void)
     #endif
 }
 
+
+void on_ws_message(const char *msg, size_t len) {
+    ESP_LOGI(TAG, "Received WebSocket message: %.*s", (int)len, msg);
+}
+
+
+void wss_Init(void)
+{
+    wss_client_config_t ws_cfg = {
+        .uri = WEBSOCKET_SERVER_URI,
+        .on_message = on_ws_message,
+    };
+
+    wss_client_start(&ws_cfg);
+}
 

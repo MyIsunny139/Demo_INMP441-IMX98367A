@@ -77,7 +77,6 @@ void app_main(void)
     }else {
         ESP_LOGI("MAIN", "i2s_read_send_task created successfully");
     }
-
     
 
 }
