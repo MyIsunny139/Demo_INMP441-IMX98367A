@@ -13,6 +13,9 @@
 // 外部声明音频数据队列
 extern QueueHandle_t audio_data_queue;
 
+// 将音频缓冲区移到全局范围，避免占用任务栈空间
+uint8_t buf[BUF_SIZE];
+
 void led_run_task(void *pvParameters)
 {
     while(1) {
@@ -41,7 +44,6 @@ void led_run_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-uint8_t buf[BUF_SIZE];
 void i2s_read_send_task(void *pvParameters)
 {
     size_t bytes = 0;
@@ -63,6 +65,11 @@ void app_main(void)
 {
     app_init();
 
+    // 初始化音频数据队列
+    audio_data_queue = xQueueCreate(10, sizeof(uint8_t) * 256);
+    if (audio_data_queue == NULL) {
+        ESP_LOGE("MAIN", "Failed to create audio_data_queue");
+    }
 
     BaseType_t ret1 = xTaskCreatePinnedToCore(led_run_task, "led_run_task", 2048, NULL, 10, NULL, 0);
     if (ret1 != pdPASS) {
@@ -71,16 +78,11 @@ void app_main(void)
         ESP_LOGI("MAIN", "led_run_task created successfully");
     }
 
+
     BaseType_t ret2 = xTaskCreatePinnedToCore(i2s_read_send_task, "i2s_read_send_task", 4096, NULL, 9, NULL, 0);
     if (ret2 != pdPASS) {
         ESP_LOGE("MAIN", "Failed to create i2s_read_send_task");
     }else {
         ESP_LOGI("MAIN", "i2s_read_send_task created successfully");
     }
-    
-
 }
-
-
-
-

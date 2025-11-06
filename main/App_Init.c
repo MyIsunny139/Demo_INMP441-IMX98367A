@@ -11,11 +11,11 @@ void app_init()
     i2s_tx_init();
     gpio_Init();
     ledc_Init();
+    
     wifi_Init();
     vTaskDelay(5000/portTICK_PERIOD_MS);    // Delay for 5 seconds
-    wss_Init();
+    wss_Init();     // 初始化WebSocket客户端
     // 创建音频数据队列，每个元素256个采样点
-
 
 }
 
@@ -223,13 +223,15 @@ void on_ws_message(const char *msg, size_t len) {
 }
 
 
+// 保持WebSocket配置在全局范围内
+static const wss_client_config_t ws_cfg = {
+    .uri = WEBSOCKET_SERVER_URI,  // 替换为你的WebSocket服务器地址
+    .on_message = on_ws_message,
+};
+
 void wss_Init(void)
 {
-    wss_client_config_t ws_cfg = {
-        .uri = WEBSOCKET_SERVER_URI,
-        .on_message = on_ws_message,
-    };
-
+    // 延迟启动WebSocket客户端，确保WiFi已连接
     wss_client_start(&ws_cfg);
 }
 

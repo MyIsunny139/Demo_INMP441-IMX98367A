@@ -35,7 +35,7 @@
 #define CON_SSID    	"MY_AP"
 #define CON_PASSWORD    "my666666"
 #define TAG "wifi_sta"
-#define WEBSOCKET_SERVER_URI "ws://echo.websocket.events"
+#define WEBSOCKET_SERVER_URI "ws://124.222.6.60:8800"
 
 
 
