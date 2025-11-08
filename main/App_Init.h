@@ -28,9 +28,6 @@
 #include "wss_client.h"
 
 #define GPIO_OUTPUT_IO_0    GPIO_NUM_10
-#define GPIO_OUTPUT_IO_1    GPIO_NUM_11
-#define FULL_EVENT_BIT0    BIT0    // Bit for full event
-#define EMPTY_EVENT_BIT1    BIT1    // Bit for empty event
 
 #define CON_SSID    	"MY_AP"
 #define CON_PASSWORD    "my666666"
@@ -39,14 +36,11 @@
 
 
 
-extern QueueHandle_t ledc_queue;    // Queue for LEDC events
-extern EventGroupHandle_t ledc_event_handle;    // Event group for LEDC events
 extern QueueHandle_t audio_data_queue;    // Queue for audio data transmission
 
 
 void app_init(void);
 void gpio_Init(void);
-void ledc_Init(void);
 void wifi_Init(void);
 void on_ws_message(const char *msg, size_t len);
 void wss_Init(void);

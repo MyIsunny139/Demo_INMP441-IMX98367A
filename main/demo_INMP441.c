@@ -18,46 +18,37 @@ uint8_t buf[BUF_SIZE];
 
 void led_run_task(void *pvParameters)
 {
-    while(1) {
-        uint32_t duty = 0;
-        if(xQueueReceive(ledc_queue, &duty, portMAX_DELAY) == pdTRUE) {
-            // printf("LEDC Queue Received Duty: %ld\n", duty);
-        }
-
-        if(xEventGroupWaitBits(ledc_event_handle, FULL_EVENT_BIT0, pdTRUE, pdFALSE, portMAX_DELAY) & FULL_EVENT_BIT0) {
-            // printf("LEDC Full Event Detected: Duty Cycle is 4095\n");
-            gpio_set_level(GPIO_OUTPUT_IO_0, 1); // Turn on LED
-            ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0, 2000); // Set fade to 0
-            ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT); // Start fade
-            
-        } 
-        if(xEventGroupWaitBits(ledc_event_handle, EMPTY_EVENT_BIT1, pdTRUE, pdFALSE, portMAX_DELAY) & EMPTY_EVENT_BIT1) {
-            // printf("LEDC Empty Event Detected: Duty Cycle is 0\n");
-            gpio_set_level(GPIO_OUTPUT_IO_0, 0); // Turn off LED
-            ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 4095, 2000); // Set fade to 8191
-            ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT); // Start fade
-            
-        }
-        /* 回调已在 app_main 中注册，避免在循环中重复注册 */
-        vTaskDelay(pdMS_TO_TICKS(500)); // Delay for visibility
+    bool led_state = false;
+    
+    while(1) 
+    {
+        //? 切换LED状态
+        led_state = !led_state;
+        gpio_set_level(GPIO_OUTPUT_IO_0, led_state ? 1 : 0);
+        
+        //? LED闪烁，500ms间隔
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
     vTaskDelete(NULL);
 }
 
 void i2s_read_send_task(void *pvParameters)
 {
-    size_t bytes = 0;
+    size_t bytes_read = 0;
+    size_t bytes_written = 0;
  
-    //一次性读取buf_size数量的音频，即dma最大搬运一次的数据量，读成功后，写入tx，即可通过MAX98357A播放
-    while (1) {
-        if (i2s_channel_read(rx_handle, buf, BUF_SIZE, &bytes, 1000) == ESP_OK)
+    //? 一次性读取buf_size数量的音频，即dma最大搬运一次的数据量，读成功后，写入tx，即可通过MAX98357A播放
+    //? 优化：移除延迟，提高实时性；减少超时时间
+    while (1) 
+    {
+        if (i2s_channel_read(rx_handle, buf, BUF_SIZE, &bytes_read, 100) == ESP_OK)
         {
-            i2s_channel_write(tx_handle, buf, BUF_SIZE, &bytes, 1000);
+            i2s_channel_write(tx_handle, buf, bytes_read, &bytes_written, 100);
         }
-        vTaskDelay(pdMS_TO_TICKS(5));
+        //? 移除延迟，让任务以最快速度运行，提高音频实时性
+        // vTaskDelay(pdMS_TO_TICKS(5));  // 已移除
     }
     vTaskDelete(NULL);
-
 }
 
 
@@ -71,18 +62,25 @@ void app_main(void)
         ESP_LOGE("MAIN", "Failed to create audio_data_queue");
     }
 
-    BaseType_t ret1 = xTaskCreatePinnedToCore(led_run_task, "led_run_task", 2048, NULL, 10, NULL, 0);
-    if (ret1 != pdPASS) {
+    //? 创建LED状态指示任务，优先级降低到5
+    BaseType_t ret1 = xTaskCreatePinnedToCore(led_run_task, "led_run_task", 1024, NULL, 5, NULL, 0);
+    if (ret1 != pdPASS) 
+    {
         ESP_LOGE("MAIN", "Failed to create led_run_task");
-    } else {
+    } 
+    else 
+    {
         ESP_LOGI("MAIN", "led_run_task created successfully");
     }
 
-
-    BaseType_t ret2 = xTaskCreatePinnedToCore(i2s_read_send_task, "i2s_read_send_task", 4096, NULL, 9, NULL, 0);
-    if (ret2 != pdPASS) {
+    //? 创建I2S音频任务，提高优先级到15（最高优先级，确保实时性）
+    BaseType_t ret2 = xTaskCreatePinnedToCore(i2s_read_send_task, "i2s_read_send_task", 4096, NULL, 15, NULL, 0);
+    if (ret2 != pdPASS) 
+    {
         ESP_LOGE("MAIN", "Failed to create i2s_read_send_task");
-    }else {
+    }
+    else 
+    {
         ESP_LOGI("MAIN", "i2s_read_send_task created successfully");
     }
 }

@@ -1,4 +1,5 @@
 #include "wss_client.h"
+#include <errno.h>
 
 #define TAG "wss_client"
 
@@ -84,9 +85,18 @@ static int websocket_handshake(const char *uri)
     struct addrinfo hints = {0}, *res;
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
-    if (getaddrinfo(host, NULL, &hints, &res) != 0) 
+    
+    int retry = 0;
+    while (getaddrinfo(host, NULL, &hints, &res) != 0 && retry < 3) 
     {
-        ESP_LOGE(TAG, "DNS lookup failed");
+        ESP_LOGW(TAG, "DNS lookup failed, retry %d/3", retry + 1);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        retry++;
+    }
+    
+    if (retry >= 3)
+    {
+        ESP_LOGE(TAG, "DNS lookup failed after 3 retries");
         return -1;
     }
     
@@ -101,15 +111,25 @@ static int websocket_handshake(const char *uri)
         return -1;
     }
     
+    //? 设置socket超时
+    struct timeval timeout;
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    
     //? 连接到服务器
+    ESP_LOGI(TAG, "Attempting to connect to %s:%d", host, port);
     if (connect(sock, (struct sockaddr *)addr, sizeof(struct sockaddr_in)) != 0) 
     {
-        ESP_LOGE(TAG, "Socket connect failed");
+        ESP_LOGE(TAG, "Socket connect failed, errno: %d", errno);
         close(sock);
         freeaddrinfo(res);
         return -1;
     }
     freeaddrinfo(res);
+    
+    ESP_LOGI(TAG, "Socket connected successfully");
     
     //? 发送WebSocket握手请求
     char req[512];
@@ -122,14 +142,20 @@ static int websocket_handshake(const char *uri)
         "Sec-WebSocket-Version: 13\r\n"
         "\r\n",
         path, host, port);
-    send(sock, req, strlen(req), 0);
+    
+    if (send(sock, req, strlen(req), 0) <= 0)
+    {
+        ESP_LOGE(TAG, "Failed to send handshake request");
+        close(sock);
+        return -1;
+    }
     
     //? 接收握手响应
     char resp[512];
     int len = recv(sock, resp, sizeof(resp)-1, 0);
     if (len <= 0) 
     {
-        ESP_LOGE(TAG, "Handshake failed");
+        ESP_LOGE(TAG, "Handshake failed, no response");
         close(sock);
         return -1;
     }
@@ -150,7 +176,7 @@ static void wss_send_task(void *param)
         //? 检查socket是否有效
         if (g_websocket_sock < 0)
         {
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            vTaskDelay(pdMS_TO_TICKS(100));
             continue;
         }
         
@@ -172,7 +198,8 @@ static void wss_send_task(void *param)
             }
         }
         
-        vTaskDelay(pdMS_TO_TICKS(1000));    // 每1秒发送一次
+        //? 增加发送间隔，降低网络任务对音频任务的影响
+        vTaskDelay(pdMS_TO_TICKS(2000));    // 从1秒改为2秒发送一次
     }
     
     ESP_LOGI(TAG, "wss_send_task ended");
@@ -241,23 +268,38 @@ static void wss_client_task(void *param)
         return;
     }
 
-    //? 执行WebSocket握手连接
-    int sock = websocket_handshake(config->uri);
+    //? 执行WebSocket握手连接，支持重试
+    int sock = -1;
+    int retry_count = 0;
+    int max_retries = 5;
+    
+    while (sock < 0 && retry_count < max_retries)
+    {
+        if (retry_count > 0)
+        {
+            ESP_LOGW(TAG, "Retry connection %d/%d", retry_count, max_retries);
+            vTaskDelay(pdMS_TO_TICKS(3000));  // 等待3秒后重试
+        }
+        
+        sock = websocket_handshake(config->uri);
+        retry_count++;
+    }
+    
     if (sock < 0)
     {
-        ESP_LOGE(TAG, "WebSocket handshake failed");
+        ESP_LOGE(TAG, "WebSocket handshake failed after %d retries", max_retries);
         vTaskDelete(NULL);
         return;
     }
     
     g_websocket_sock = sock;    // 保存socket供其他任务使用
     
-    //? 创建发送任务
-    xTaskCreatePinnedToCore(wss_send_task, "wss_send", 4096, NULL, 5, NULL, 1);
+    //? 创建发送任务，优先级降低到3
+    xTaskCreatePinnedToCore(wss_send_task, "wss_send", 4096, NULL, 3, NULL, 1);
     ESP_LOGI(TAG, "wss_send_task created");
     
-    //? 创建接收任务
-    xTaskCreatePinnedToCore(wss_recv_task, "wss_recv", 4096, NULL, 5, NULL, 1);
+    //? 创建接收任务，优先级降低到3
+    xTaskCreatePinnedToCore(wss_recv_task, "wss_recv", 4096, NULL, 3, NULL, 1);
     ESP_LOGI(TAG, "wss_recv_task created");
     
     //? 主任务等待连接断开
@@ -279,7 +321,8 @@ void wss_client_start(const wss_client_config_t *config)
         return;
     }
     
-    xTaskCreatePinnedToCore(wss_client_task, "wss_client", 8192, (void *)config, 5, NULL, 1);
+    //? 降低WebSocket任务优先级到3，避免影响音频实时性
+    xTaskCreatePinnedToCore(wss_client_task, "wss_client", 8192, (void *)config, 3, NULL, 1);
     ESP_LOGI(TAG, "wss_client_task created");
 }
 

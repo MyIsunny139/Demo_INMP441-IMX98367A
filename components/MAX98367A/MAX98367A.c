@@ -5,7 +5,10 @@ i2s_chan_handle_t tx_handle;
 void i2s_tx_init(void)
 {
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_1, I2S_ROLE_MASTER);
-    chan_cfg.dma_frame_num = 511;
+    
+    //? 优化：减小dma frame num，降低延迟，提高实时性
+    chan_cfg.dma_frame_num = 256;
+    chan_cfg.auto_clear = true;     //? 自动清除DMA缓冲区
     i2s_new_channel(&chan_cfg, &tx_handle, NULL);
  
     i2s_std_config_t std_cfg = {
