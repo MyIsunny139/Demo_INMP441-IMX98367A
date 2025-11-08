@@ -554,7 +554,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/main/cmake_install.cmake")
+  include("E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/INMP441/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
@@ -564,11 +564,16 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/INMP441/cmake_install.cmake")
+  include("E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/wifi_sta/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
   include("E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/wss_client/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441/build/esp-idf/main/cmake_install.cmake")
 endif()
 

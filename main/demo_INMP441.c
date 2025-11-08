@@ -62,8 +62,8 @@ void app_main(void)
         ESP_LOGE("MAIN", "Failed to create audio_data_queue");
     }
 
-    //? 创建LED状态指示任务，优先级降低到5
-    BaseType_t ret1 = xTaskCreatePinnedToCore(led_run_task, "led_run_task", 1024, NULL, 5, NULL, 0);
+    //? 创建LED状态指示任务
+    BaseType_t ret1 = xTaskCreatePinnedToCore(led_run_task, "led_run_task", TASK_LED_STACK_SIZE, NULL, TASK_LED_PRIORITY, NULL, 0);
     if (ret1 != pdPASS) 
     {
         ESP_LOGE("MAIN", "Failed to create led_run_task");
@@ -73,8 +73,8 @@ void app_main(void)
         ESP_LOGI("MAIN", "led_run_task created successfully");
     }
 
-    //? 创建I2S音频任务，提高优先级到15（最高优先级，确保实时性）
-    BaseType_t ret2 = xTaskCreatePinnedToCore(i2s_read_send_task, "i2s_read_send_task", 4096, NULL, 15, NULL, 0);
+    //? 创建I2S音频任务（最高优先级，确保实时性）
+    BaseType_t ret2 = xTaskCreatePinnedToCore(i2s_read_send_task, "i2s_read_send_task", TASK_AUDIO_STACK_SIZE, NULL, TASK_AUDIO_PRIORITY, NULL, 0);
     if (ret2 != pdPASS) 
     {
         ESP_LOGE("MAIN", "Failed to create i2s_read_send_task");

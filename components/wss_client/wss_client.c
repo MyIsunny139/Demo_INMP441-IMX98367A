@@ -294,11 +294,11 @@ static void wss_client_task(void *param)
     
     g_websocket_sock = sock;    // 保存socket供其他任务使用
     
-    //? 创建发送任务，优先级降低到3
+    //? 创建发送任务
     xTaskCreatePinnedToCore(wss_send_task, "wss_send", 4096, NULL, 3, NULL, 1);
     ESP_LOGI(TAG, "wss_send_task created");
     
-    //? 创建接收任务，优先级降低到3
+    //? 创建接收任务
     xTaskCreatePinnedToCore(wss_recv_task, "wss_recv", 4096, NULL, 3, NULL, 1);
     ESP_LOGI(TAG, "wss_recv_task created");
     
@@ -321,7 +321,7 @@ void wss_client_start(const wss_client_config_t *config)
         return;
     }
     
-    //? 降低WebSocket任务优先级到3，避免影响音频实时性
+    //? 在Core 1上创建WebSocket任务，避免影响Core 0的音频实时性
     xTaskCreatePinnedToCore(wss_client_task, "wss_client", 8192, (void *)config, 3, NULL, 1);
     ESP_LOGI(TAG, "wss_client_task created");
 }

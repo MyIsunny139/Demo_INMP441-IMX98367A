@@ -11,6 +11,44 @@
 #include "lwip/sockets.h"
 #include "lwip/netdb.h"
 
+//? ==================== WebSocket默认配置 ====================
+//? 可在调用 wss_client_start() 时传入自定义配置覆盖
+
+//? WebSocket服务器URI（仅支持ws://，不支持wss://）
+#ifndef WSS_URI
+#define WSS_URI         "ws://124.222.6.60:8800"
+#endif
+
+//? WebSocket连接超时（秒）
+#ifndef WSS_TIMEOUT_SEC
+#define WSS_TIMEOUT_SEC 10
+#endif
+
+//? WebSocket重连间隔（毫秒）
+#ifndef WSS_RETRY_DELAY_MS
+#define WSS_RETRY_DELAY_MS  3000
+#endif
+
+//? WebSocket最大重连次数
+#ifndef WSS_MAX_RETRY
+#define WSS_MAX_RETRY   5
+#endif
+
+//? WebSocket消息发送间隔（毫秒）
+#ifndef WSS_SEND_INTERVAL_MS
+#define WSS_SEND_INTERVAL_MS  2000
+#endif
+
+//? WebSocket任务优先级
+#ifndef TASK_WSS_PRIORITY
+#define TASK_WSS_PRIORITY       3
+#endif
+
+//? WebSocket任务堆栈大小（字节）
+#ifndef TASK_WSS_STACK_SIZE
+#define TASK_WSS_STACK_SIZE     8192
+#endif
+
 
 
 #ifdef __cplusplus

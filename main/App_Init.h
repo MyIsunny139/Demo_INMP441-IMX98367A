@@ -4,13 +4,8 @@
 #include "driver/ledc.h"
 #include "driver/uart.h"
 
-#include "esp_wifi.h"
 #include "esp_log.h"
 #include "esp_err.h"
-#include "esp_event.h"
-#include "esp_netif.h"
-#include "esp_system.h"
-#include "esp_chip_info.h"
 #include <stdio.h>
 
 #include "freertos/FreeRTOS.h"
@@ -18,23 +13,40 @@
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 
-#include "nvs_flash.h"
-
-#include "lwip/err.h"
-#include "lwip/sockets.h"
-
 #include "INMP441.h"
 #include "MAX98367A.h"
+#include "wifi_sta.h"
 #include "wss_client.h"
 
-#define GPIO_OUTPUT_IO_0    GPIO_NUM_10
+//? ==================== 应用硬件配置 ====================
 
-#define CON_SSID    	"MY_AP"
-#define CON_PASSWORD    "my666666"
-#define TAG "wifi_sta"
-#define WEBSOCKET_SERVER_URI "ws://124.222.6.60:8800"
+//? LED状态指示灯GPIO
+#ifndef GPIO_OUTPUT_IO_0
+#define GPIO_OUTPUT_IO_0    10
+#endif
 
+//? ==================== 应用任务配置 ====================
 
+//? 音频处理任务优先级（最高优先级，保证实时性）
+#ifndef TASK_AUDIO_PRIORITY
+#define TASK_AUDIO_PRIORITY     15
+#endif
+
+//? LED指示任务优先级
+#ifndef TASK_LED_PRIORITY
+#define TASK_LED_PRIORITY       5
+#endif
+
+//? 任务堆栈大小（字节）
+#ifndef TASK_AUDIO_STACK_SIZE
+#define TASK_AUDIO_STACK_SIZE   4096
+#endif
+
+#ifndef TASK_LED_STACK_SIZE
+#define TASK_LED_STACK_SIZE     2048
+#endif
+
+#define TAG "app_init"
 
 extern QueueHandle_t audio_data_queue;    // Queue for audio data transmission
 

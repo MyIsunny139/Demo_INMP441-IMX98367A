@@ -254,7 +254,7 @@ IGNORE_EXTRA_COMPONENT:UNINITIALIZED=
 PROJECT_SOURCE_DIR:UNINITIALIZED=E:/soft/ESP-project/esp32-demo-Assembly/demo_INMP441
 
 //No help, variable specified on the command line.
-PYTHON:UNINITIALIZED=E:/soft/Espressif/python_env/idf5.4_py3.11_env/Scripts/python.exe
+PYTHON:UNINITIALIZED=E:/soft/Espressif/python_env/idf5.4_py3.13_env/Scripts/python.exe
 
 //No help, variable specified on the command line.
 PYTHON_DEPS_CHECKED:UNINITIALIZED=1
