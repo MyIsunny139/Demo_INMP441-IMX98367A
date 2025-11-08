@@ -315,7 +315,7 @@ static void wss_client_task(void *param)
 
 void wss_client_start(const wss_client_config_t *config) 
 {
-    if (!config || !config->uri) 
+    if (!config || !config->uri)
     {
         ESP_LOGE(TAG, "Invalid config");
         return;
