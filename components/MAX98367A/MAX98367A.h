@@ -27,10 +27,28 @@
 #define BUF_SIZE    (MAX98367A_DMA_FRAME_NUM * MAX98367A_CHANNEL_NUM * MAX98367A_BIT_WIDTH / 8)
 #define SAMPLE_RATE MAX98367A_SAMPLE_RATE  //? 保留旧定义用于兼容
 
+//? 音量增益配置
+//? 增益范围: 0.0 ~ 2.0 (0.0=静音, 1.0=原音量, 2.0=2倍音量)
+#ifndef MAX98367A_DEFAULT_GAIN
+#define MAX98367A_DEFAULT_GAIN    1.0f
+#endif
+
 extern i2s_chan_handle_t tx_handle;
 
-
-
+//? 初始化I2S发送
 void i2s_tx_init(void);
+
+//? 设置音量增益
+//? @param gain 增益值 (0.0 ~ 2.0)，1.0为原音量
+void max98367a_set_gain(float gain);
+
+//? 获取当前音量增益
+//? @return 当前增益值
+float max98367a_get_gain(void);
+
+//? 应用增益到音频数据
+//? @param data 音频数据缓冲区（int32_t数组）
+//? @param len 数据长度（字节数）
+void max98367a_apply_gain(void *data, size_t len);
 
 #endif
