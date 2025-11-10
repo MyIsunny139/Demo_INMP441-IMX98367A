@@ -19,8 +19,29 @@
 #define INMP441_BIT_WIDTH       32      //? 位宽
 #define INMP441_CHANNEL_MODE    I2S_SLOT_MODE_STEREO  //? 声道模式
 
+//? 噪声门限配置（用于过滤麦克风小信号杂音）
+//? 低于此阈值的音频信号将被静音
+//? 范围: 0 ~ INT32_MAX，建议值: 100000 ~ 10000000
+//? 0 = 禁用噪声门限
+#ifndef INMP441_NOISE_GATE_THRESHOLD
+#define INMP441_NOISE_GATE_THRESHOLD    1000000
+#endif
+
 extern i2s_chan_handle_t rx_handle;
 
 void i2s_rx_init(void);
+
+//? 设置噪声门限
+//? @param threshold 噪声门限值，0表示禁用
+void inmp441_set_noise_gate(int32_t threshold);
+
+//? 获取当前噪声门限
+//? @return 当前噪声门限值
+int32_t inmp441_get_noise_gate(void);
+
+//? 过滤音频数据中的噪声
+//? @param data 音频数据缓冲区（int32_t数组）
+//? @param len 数据长度（字节数）
+void inmp441_filter_noise(void *data, size_t len);
 
 #endif

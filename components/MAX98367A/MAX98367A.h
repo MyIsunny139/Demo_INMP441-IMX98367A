@@ -28,9 +28,14 @@
 #define SAMPLE_RATE MAX98367A_SAMPLE_RATE  //? 保留旧定义用于兼容
 
 //? 音量增益配置
-//? 增益范围: 0.0 ~ 2.0 (0.0=静音, 1.0=原音量, 2.0=2倍音量)
+//? 增益范围: 0.0 ~ 5.0 (0.0=静音, 1.0=原音量, 5.0=5倍音量)
 #ifndef MAX98367A_DEFAULT_GAIN
-#define MAX98367A_DEFAULT_GAIN    1.0f
+#define MAX98367A_DEFAULT_GAIN    3.0f
+#endif
+
+//? 最大增益限制
+#ifndef MAX98367A_MAX_GAIN
+#define MAX98367A_MAX_GAIN        5.0f
 #endif
 
 extern i2s_chan_handle_t tx_handle;
@@ -39,7 +44,7 @@ extern i2s_chan_handle_t tx_handle;
 void i2s_tx_init(void);
 
 //? 设置音量增益
-//? @param gain 增益值 (0.0 ~ 2.0)，1.0为原音量
+//? @param gain 增益值 (0.0 ~ 5.0)，1.0为原音量
 void max98367a_set_gain(float gain);
 
 //? 获取当前音量增益

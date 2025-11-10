@@ -46,8 +46,8 @@ void max98367a_set_gain(float gain)
 {
     if (gain < 0.0f) {
         gain = 0.0f;
-    } else if (gain > 2.0f) {
-        gain = 2.0f;
+    } else if (gain > MAX98367A_MAX_GAIN) {
+        gain = MAX98367A_MAX_GAIN;
     }
     g_volume_gain = gain;
     ESP_LOGI(TAG, "Volume gain set to: %.2f", g_volume_gain);

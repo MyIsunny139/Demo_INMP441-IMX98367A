@@ -87,16 +87,16 @@ static int websocket_handshake(const char *uri)
     hints.ai_socktype = SOCK_STREAM;
     
     int retry = 0;
-    while (getaddrinfo(host, NULL, &hints, &res) != 0 && retry < 3) 
+    while (getaddrinfo(host, NULL, &hints, &res) != 0 && retry < WSS_DNS_MAX_RETRY) 
     {
-        ESP_LOGW(TAG, "DNS lookup failed, retry %d/3", retry + 1);
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        ESP_LOGW(TAG, "DNS lookup failed, retry %d/%d", retry + 1, WSS_DNS_MAX_RETRY);
+        vTaskDelay(pdMS_TO_TICKS(WSS_DNS_RETRY_INTERVAL_MS));
         retry++;
     }
     
-    if (retry >= 3)
+    if (retry >= WSS_DNS_MAX_RETRY)
     {
-        ESP_LOGE(TAG, "DNS lookup failed after 3 retries");
+        ESP_LOGE(TAG, "DNS lookup failed after %d retries", WSS_DNS_MAX_RETRY);
         return -1;
     }
     
@@ -192,14 +192,13 @@ static void wss_send_task(void *param)
             }
             else
             {
-                ESP_LOGE(TAG, "Send failed");
-                g_websocket_sock = -1;  // 标记连接断开
-                break;
+                ESP_LOGE(TAG, "Send failed, errno: %d", errno);
+                g_websocket_sock = -1;  // 标记连接断开，触发重连
             }
         }
         
         //? 增加发送间隔，降低网络任务对音频任务的影响
-        vTaskDelay(pdMS_TO_TICKS(2000));    // 从1秒改为2秒发送一次
+        vTaskDelay(pdMS_TO_TICKS(WSS_SEND_INTERVAL_MS));
     }
     
     ESP_LOGI(TAG, "wss_send_task ended");
@@ -225,9 +224,9 @@ static void wss_recv_task(void *param)
         int r = recv(g_websocket_sock, hdr, 2, 0);
         if (r <= 0) 
         {
-            ESP_LOGW(TAG, "Connection closed");
-            g_websocket_sock = -1;  // 标记连接断开
-            break;
+            ESP_LOGW(TAG, "Connection closed by server, errno: %d", errno);
+            g_websocket_sock = -1;  // 标记连接断开，触发重连
+            continue;  // 继续循环，等待重连
         }
         
         //? 解析WebSocket帧头
@@ -268,48 +267,56 @@ static void wss_client_task(void *param)
         return;
     }
 
-    //? 执行WebSocket握手连接，支持重试
-    int sock = -1;
-    int retry_count = 0;
-    int max_retries = 5;
-    
-    while (sock < 0 && retry_count < max_retries)
+    //? 主循环：支持断线自动重连
+    while (1)
     {
-        if (retry_count > 0)
+        //? 执行WebSocket握手连接，支持重试
+        int sock = -1;
+        int retry_count = 0;
+        
+        ESP_LOGI(TAG, "Attempting to connect to WebSocket server...");
+        
+        while (sock < 0 && retry_count < WSS_HANDSHAKE_MAX_RETRY)
         {
-            ESP_LOGW(TAG, "Retry connection %d/%d", retry_count, max_retries);
-            vTaskDelay(pdMS_TO_TICKS(3000));  // 等待3秒后重试
+            if (retry_count > 0)
+            {
+                ESP_LOGW(TAG, "Retry connection %d/%d", retry_count, WSS_HANDSHAKE_MAX_RETRY);
+                vTaskDelay(pdMS_TO_TICKS(WSS_HANDSHAKE_RETRY_INTERVAL_MS));
+            }
+            
+            sock = websocket_handshake(config->uri);
+            retry_count++;
         }
         
-        sock = websocket_handshake(config->uri);
-        retry_count++;
+        if (sock < 0)
+        {
+            ESP_LOGE(TAG, "WebSocket handshake failed after %d retries, will retry in %d ms", 
+                     WSS_HANDSHAKE_MAX_RETRY, WSS_RECONNECT_FAILED_DELAY_MS);
+            vTaskDelay(pdMS_TO_TICKS(WSS_RECONNECT_FAILED_DELAY_MS));
+            continue;  // 继续外层循环，重新尝试连接
+        }
+        
+        g_websocket_sock = sock;    // 保存socket供其他任务使用
+        ESP_LOGI(TAG, "WebSocket connected successfully");
+        
+        //? 等待连接断开（socket被置为-1表示断开）
+        while (g_websocket_sock >= 0)
+        {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        
+        //? 连接已断开，关闭socket
+        if (sock >= 0)
+        {
+            close(sock);
+            ESP_LOGW(TAG, "WebSocket connection closed, will reconnect in %d ms...", WSS_RECONNECT_DELAY_MS);
+        }
+        
+        //? 等待后自动重连
+        vTaskDelay(pdMS_TO_TICKS(WSS_RECONNECT_DELAY_MS));
     }
     
-    if (sock < 0)
-    {
-        ESP_LOGE(TAG, "WebSocket handshake failed after %d retries", max_retries);
-        vTaskDelete(NULL);
-        return;
-    }
-    
-    g_websocket_sock = sock;    // 保存socket供其他任务使用
-    
-    //? 创建发送任务
-    xTaskCreatePinnedToCore(wss_send_task, "wss_send", 4096, NULL, 3, NULL, 1);
-    ESP_LOGI(TAG, "wss_send_task created");
-    
-    //? 创建接收任务
-    xTaskCreatePinnedToCore(wss_recv_task, "wss_recv", 4096, NULL, 3, NULL, 1);
-    ESP_LOGI(TAG, "wss_recv_task created");
-    
-    //? 主任务等待连接断开
-    while (g_websocket_sock >= 0)
-    {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-    
-    close(sock);
-    ESP_LOGI(TAG, "WebSocket connection closed");
+    //? 理论上不会到达这里
     vTaskDelete(NULL);
 }
 
@@ -321,8 +328,16 @@ void wss_client_start(const wss_client_config_t *config)
         return;
     }
     
-    //? 在Core 1上创建WebSocket任务，避免影响Core 0的音频实时性
+    //? 在Core 1上创建WebSocket主任务
     xTaskCreatePinnedToCore(wss_client_task, "wss_client", 8192, (void *)config, 3, NULL, 1);
     ESP_LOGI(TAG, "wss_client_task created");
+    
+    //? 创建发送任务（持久运行，自动适应连接状态）
+    xTaskCreatePinnedToCore(wss_send_task, "wss_send", 4096, NULL, 3, NULL, 1);
+    ESP_LOGI(TAG, "wss_send_task created");
+    
+    //? 创建接收任务（持久运行，自动适应连接状态）
+    xTaskCreatePinnedToCore(wss_recv_task, "wss_recv", 4096, NULL, 3, NULL, 1);
+    ESP_LOGI(TAG, "wss_recv_task created");
 }
 

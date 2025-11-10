@@ -39,6 +39,40 @@
 #define WSS_SEND_INTERVAL_MS  2000
 #endif
 
+//? ==================== WebSocket重连配置 ====================
+
+//? 初次连接失败后的握手重试次数
+#ifndef WSS_HANDSHAKE_MAX_RETRY
+#define WSS_HANDSHAKE_MAX_RETRY  5
+#endif
+
+//? 握手重试之间的间隔（毫秒）
+#ifndef WSS_HANDSHAKE_RETRY_INTERVAL_MS
+#define WSS_HANDSHAKE_RETRY_INTERVAL_MS  3000
+#endif
+
+//? 连接断开后自动重连前的等待时间（毫秒）
+#ifndef WSS_RECONNECT_DELAY_MS
+#define WSS_RECONNECT_DELAY_MS  5000
+#endif
+
+//? 所有握手重试失败后的等待时间（毫秒）
+#ifndef WSS_RECONNECT_FAILED_DELAY_MS
+#define WSS_RECONNECT_FAILED_DELAY_MS  10000
+#endif
+
+//? DNS查询重试次数
+#ifndef WSS_DNS_MAX_RETRY
+#define WSS_DNS_MAX_RETRY  3
+#endif
+
+//? DNS查询重试间隔（毫秒）
+#ifndef WSS_DNS_RETRY_INTERVAL_MS
+#define WSS_DNS_RETRY_INTERVAL_MS  1000
+#endif
+
+//? ==================== WebSocket任务配置 ====================
+
 //? WebSocket任务优先级
 #ifndef TASK_WSS_PRIORITY
 #define TASK_WSS_PRIORITY       3

@@ -4,19 +4,47 @@
 
 MAX98367A 组件现已支持软件音量增益控制，可以在不改变硬件的情况下调整音频输出音量。
 
+## 配置说明
+
+### 默认增益配置
+系统会自动使用 `MAX98367A.h` 中定义的默认增益值：
+
+```c
+//? 音量增益配置（在 components/MAX98367A/MAX98367A.h 中）
+//? 增益范围: 0.0 ~ 5.0 (0.0=静音, 1.0=原音量, 5.0=5倍音量)
+#ifndef MAX98367A_DEFAULT_GAIN
+#define MAX98367A_DEFAULT_GAIN    3.0f  // 修改此值可改变默认音量
+#endif
+
+//? 最大增益限制
+#ifndef MAX98367A_MAX_GAIN
+#define MAX98367A_MAX_GAIN        5.0f  // 修改此值可改变最大增益限制
+#endif
+```
+
+**修改默认音量**: 直接编辑 `components/MAX98367A/MAX98367A.h` 中的 `MAX98367A_DEFAULT_GAIN` 值
+- 改为 `1.0f` - 原音量
+- 改为 `2.0f` - 2倍音量
+- 改为 `3.0f` - 3倍音量（当前默认）
+- 改为 `5.0f` - 5倍音量（最大）
+
 ## API 说明
 
-### 1. 设置音量增益
+### 1. 设置音量增益（运行时动态调整）
 ```c
 void max98367a_set_gain(float gain);
 ```
-- **参数**: `gain` - 增益值，范围 0.0 ~ 2.0
+- **参数**: `gain` - 增益值，范围 0.0 ~ 5.0
   - `0.0` = 静音
   - `0.5` = 半音量
-  - `1.0` = 原音量（默认）
-  - `1.5` = 1.5倍音量
+  - `1.0` = 原音量
   - `2.0` = 2倍音量
-- **说明**: 超出范围的值会被自动限制在 0.0~2.0 之间
+  - `3.0` = 3倍音量
+  - `5.0` = 5倍音量（最大）
+- **说明**: 
+  - 超出范围的值会被自动限制在 0.0~5.0 之间
+  - 用于运行时动态调整音量
+  - 如果只需固定音量，直接修改头文件中的 `MAX98367A_DEFAULT_GAIN` 即可
 
 ### 2. 获取当前增益
 ```c
@@ -35,20 +63,38 @@ void max98367a_apply_gain(void *data, size_t len);
 
 ## 使用示例
 
-### 示例 1: 在 app_main 中设置初始音量
+### 示例 1: 使用默认音量（推荐）
+```c
+void app_main(void)
+{
+    app_init();
+    
+    // 系统会自动使用 MAX98367A_DEFAULT_GAIN (2.0f)
+    // 无需手动调用 max98367a_set_gain()
+    
+    // ... 其他初始化代码
+}
+```
+
+**修改默认音量**: 直接编辑 `components/MAX98367A/MAX98367A.h`:
+```c
+#define MAX98367A_DEFAULT_GAIN    1.5f  // 改为1.5倍音量
+```
+
+### 示例 2: 在 app_main 中覆盖默认音量（可选）
 ```c
 void app_main(void)
 {
     app_init();
 
-    // 设置为 1.5 倍音量
+    // 可选：如果需要在运行时覆盖默认值
     max98367a_set_gain(1.5f);
 
     // ... 其他初始化代码
 }
 ```
 
-### 示例 2: 动态调整音量
+### 示例 3: 动态调整音量
 ```c
 // 增大音量
 void increase_volume(void)
@@ -77,7 +123,7 @@ void unmute(void)
 }
 ```
 
-### 示例 3: 在音频处理任务中应用增益
+### 示例 4: 在音频处理任务中应用增益
 ```c
 void i2s_read_send_task(void *pvParameters)
 {
@@ -89,7 +135,7 @@ void i2s_read_send_task(void *pvParameters)
     {
         if (i2s_channel_read(rx_handle, buf, BUF_SIZE, &bytes_read, 100) == ESP_OK)
         {
-            // 应用音量增益
+            // 应用音量增益（使用当前设置的增益值）
             max98367a_apply_gain(buf, bytes_read);
             
             // 写入播放
@@ -99,7 +145,7 @@ void i2s_read_send_task(void *pvParameters)
 }
 ```
 
-### 示例 4: 通过 WebSocket 远程控制音量
+### 示例 5: 通过 WebSocket 远程控制音量
 ```c
 void on_ws_message(const char *msg, size_t len)
 {
@@ -117,14 +163,75 @@ void on_ws_message(const char *msg, size_t len)
 }
 ```
 
-## 配置说明
+## 配置方式说明
 
-### 默认增益值
-在 `MAX98367A.h` 中可以修改默认增益：
+### ✅ 推荐方式：修改头文件默认值（固定音量）
+**配置位置**: `components/MAX98367A/MAX98367A.h`
 ```c
 #ifndef MAX98367A_DEFAULT_GAIN
-#define MAX98367A_DEFAULT_GAIN    1.0f  // 修改此值改变默认音量
+#define MAX98367A_DEFAULT_GAIN    2.0f  // 直接修改这里
 #endif
+```
+
+**优点**: 
+- ✅ 简单直接，一处修改全局生效
+- ✅ 编译时确定，无运行时开销
+- ✅ 代码更简洁清晰
+- ✅ 适合大多数固定音量场景
+
+**使用场景**: 项目音量固定，不需要动态调整
+
+---
+
+### 🔧 可选方式：运行时动态调整（灵活控制）
+**使用方法**: 在代码中调用 API
+```c
+max98367a_set_gain(1.5f);  // 运行时设置
+```
+
+**优点**:
+- ✅ 灵活，可以随时调整
+- ✅ 支持用户控制、远程控制等场景
+- ✅ 可以实现自动增益控制（AGC）
+
+**使用场景**: 
+- 用户音量控制界面
+- 远程音量调节
+- 自动增益算法
+- 音频淡入淡出效果
+
+---
+
+### 📋 配置流程建议
+
+1. **设置基础音量**: 修改 `MAX98367A.h` 中的 `MAX98367A_DEFAULT_GAIN` （必需）
+2. **调整最大限制** (可选): 修改 `MAX98367A_MAX_GAIN` 改变增益上限（默认5.0）
+3. **动态调整** (可选): 如需运行时调整，调用 `max98367a_set_gain()`
+4. **应用增益**: 在音频任务中调用 `max98367a_apply_gain()` （必需）
+
+## 默认增益值配置
+
+### 在头文件中修改（当前项目配置）
+`components/MAX98367A/MAX98367A.h`:
+```c
+#ifndef MAX98367A_DEFAULT_GAIN
+#define MAX98367A_DEFAULT_GAIN    3.0f  // 当前默认为3倍音量
+#endif
+
+#ifndef MAX98367A_MAX_GAIN
+#define MAX98367A_MAX_GAIN        5.0f  // 最大增益限制为5倍
+#endif
+```
+
+**修改示例**:
+- 原音量: `#define MAX98367A_DEFAULT_GAIN    1.0f`
+- 2倍: `#define MAX98367A_DEFAULT_GAIN    2.0f`
+- 3倍: `#define MAX98367A_DEFAULT_GAIN    3.0f` （当前）
+- 5倍: `#define MAX98367A_DEFAULT_GAIN    5.0f` （最大）
+
+**调整最大增益限制**:
+```c
+#define MAX98367A_MAX_GAIN        10.0f  // 允许最大10倍增益
 ```
 
 ## 性能说明
@@ -137,7 +244,18 @@ void on_ws_message(const char *msg, size_t len)
 ### 音质影响
 - 增益 < 1.0：降低音量，不会产生失真
 - 增益 = 1.0：无损透传
-- 增益 > 1.0：提高音量，可能在信号强度高时产生削波失真（已做溢出保护）
+- 增益 1.0 ~ 3.0：适度提高音量，一般情况下不会失真
+- 增益 > 3.0：大幅提高音量，信号强度高时可能产生削波失真（已做溢出保护）
+- 增益 = 5.0：最大增益，适合输入信号非常小的场景
+
+### 失真说明
+当增益较大时（如 > 3.0），如果输入信号本身就很强，放大后可能超出 INT32 范围，系统会自动限幅到 INT32_MAX，这会产生削波失真（听起来像爆音）。
+
+**建议**:
+- 输入信号强: 使用 1.0 ~ 2.0 倍增益
+- 输入信号中等: 使用 2.0 ~ 3.0 倍增益（推荐）
+- 输入信号弱: 使用 3.0 ~ 5.0 倍增益
+- 可以先从 1.0 开始，逐步增大到合适的音量
 
 ## 技术细节
 

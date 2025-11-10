@@ -1,6 +1,12 @@
 #include "INMP441.h"
+#include "esp_log.h"
+
+static const char *TAG = "INMP441";
 
 i2s_chan_handle_t rx_handle;
+
+//? 当前噪声门限值
+static int32_t g_noise_gate_threshold = INMP441_NOISE_GATE_THRESHOLD;
 
 void i2s_rx_init(void)
 {
@@ -34,4 +40,47 @@ void i2s_rx_init(void)
     i2s_channel_init_std_mode(rx_handle, &std_cfg);
  
     i2s_channel_enable(rx_handle);
+}
+
+//? 设置噪声门限
+void inmp441_set_noise_gate(int32_t threshold)
+{
+    if (threshold < 0) {
+        threshold = 0;
+    }
+    g_noise_gate_threshold = threshold;
+    if (threshold > 0) {
+        ESP_LOGI(TAG, "Noise gate threshold set to: %ld", (long)g_noise_gate_threshold);
+    } else {
+        ESP_LOGI(TAG, "Noise gate disabled");
+    }
+}
+
+//? 获取当前噪声门限
+int32_t inmp441_get_noise_gate(void)
+{
+    return g_noise_gate_threshold;
+}
+
+//? 过滤音频数据中的噪声
+void inmp441_filter_noise(void *data, size_t len)
+{
+    if (data == NULL || len == 0 || g_noise_gate_threshold == 0) {
+        return;
+    }
+    
+    int32_t *samples = (int32_t *)data;
+    size_t sample_count = len / sizeof(int32_t);
+    
+    for (size_t i = 0; i < sample_count; i++) {
+        int32_t sample = samples[i];
+        
+        //? 计算绝对值
+        int32_t abs_sample = (sample >= 0) ? sample : -sample;
+        
+        //? 如果信号幅度低于门限，静音
+        if (abs_sample < g_noise_gate_threshold) {
+            samples[i] = 0;
+        }
+    }
 }

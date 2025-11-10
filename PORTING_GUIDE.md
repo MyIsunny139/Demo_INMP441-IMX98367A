@@ -106,11 +106,26 @@ demo_INMP441/
 //? WebSocket连接超时（秒）
 #define WSS_TIMEOUT_SEC 10
 
-//? WebSocket重连间隔（毫秒）
-#define WSS_RETRY_DELAY_MS  3000
+//? WebSocket消息发送间隔（毫秒）
+#define WSS_SEND_INTERVAL_MS  2000
 
-//? WebSocket最大重连次数
-#define WSS_MAX_RETRY   5
+//? 初次连接失败后的握手重试次数
+#define WSS_HANDSHAKE_MAX_RETRY  5
+
+//? 握手重试之间的间隔（毫秒）
+#define WSS_HANDSHAKE_RETRY_INTERVAL_MS  3000
+
+//? 连接断开后自动重连前的等待时间（毫秒）
+#define WSS_RECONNECT_DELAY_MS  5000
+
+//? 所有握手重试失败后的等待时间（毫秒）
+#define WSS_RECONNECT_FAILED_DELAY_MS  10000
+
+//? DNS查询重试次数
+#define WSS_DNS_MAX_RETRY  3
+
+//? DNS查询重试间隔（毫秒）
+#define WSS_DNS_RETRY_INTERVAL_MS  1000
 ```
 
 ### 4. 调整音频参数（可选）
