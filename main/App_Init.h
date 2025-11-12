@@ -29,7 +29,7 @@
 
 //? 音频处理任务优先级（最高优先级，保证实时性）
 #ifndef TASK_AUDIO_PRIORITY
-#define TASK_AUDIO_PRIORITY     15
+#define TASK_AUDIO_PRIORITY     10
 #endif
 
 //? LED指示任务优先级
@@ -48,7 +48,8 @@
 
 #define TAG "app_init"
 
-extern QueueHandle_t audio_data_queue;    // Queue for audio data transmission
+extern QueueHandle_t audio_data_queue;      // 发送音频数据到 WebSocket
+extern QueueHandle_t audio_playback_queue;  // 从 WebSocket 接收音频数据并播放
 
 
 void app_init(void);

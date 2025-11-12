@@ -1,12 +1,93 @@
 #include "wss_client.h"
 #include <errno.h>
+#include "freertos/queue.h"
 
 #define TAG "wss_client"
 
+//? 外部队列：音频数据队列
+extern QueueHandle_t audio_data_queue;      // 麦克风 → WebSocket
+extern QueueHandle_t audio_playback_queue;  // WebSocket → 扬声器
+
 //? WebSocket全局socket句柄，用于发送和接收任务共享
 static int g_websocket_sock = -1;
-//? WebSocket配置，用于回调函数
+//? WebSocket配置,用于回调函数
 static const wss_client_config_t *g_config = NULL;
+
+//? 静态缓冲区（避免占用任务栈空间）
+static uint8_t g_send_audio_buffer[2048];    // 发送任务音频缓冲区
+static uint8_t g_send_frame_buffer[2200];    // 发送任务WebSocket帧缓冲区
+static uint8_t g_recv_buffer[2200];          // 接收任务数据缓冲区
+
+//? 组包 WebSocket 二进制帧，返回帧长度
+static size_t build_websocket_binary_frame(const uint8_t *data, size_t data_len, uint8_t *frame_buf, size_t buf_size) 
+{
+    size_t header_len = 6;  // 基础头：2字节 + 4字节掩码
+    
+    //? 根据数据长度确定帧头大小
+    if (data_len <= 125)
+    {
+        header_len = 6;  // 2 + 4
+    }
+    else if (data_len <= 65535)
+    {
+        header_len = 8;  // 2 + 2(扩展长度) + 4
+    }
+    else
+    {
+        header_len = 14;  // 2 + 8(扩展长度) + 4
+    }
+    
+    //? 检查缓冲区大小
+    if (buf_size < data_len + header_len) 
+    {
+        ESP_LOGE(TAG, "Buffer too small: need %d, have %d", data_len + header_len, buf_size);
+        return 0;
+    }
+    
+    //? 第一个字节：FIN + OpCode
+    frame_buf[0] = 0x82;  // FIN=1, RSV=0, OpCode=2 (binary)
+    
+    //? 第二个字节及扩展长度
+    int mask_offset = 2;
+    if (data_len <= 125)
+    {
+        frame_buf[1] = 0x80 | data_len;  // MASK=1 + payload length
+    }
+    else if (data_len <= 65535)
+    {
+        frame_buf[1] = 0x80 | 126;  // MASK=1 + 126 (使用扩展长度)
+        frame_buf[2] = (data_len >> 8) & 0xFF;  // 高字节
+        frame_buf[3] = data_len & 0xFF;         // 低字节
+        mask_offset = 4;
+    }
+    else
+    {
+        frame_buf[1] = 0x80 | 127;  // MASK=1 + 127 (使用64位扩展长度)
+        //? 填充 8 字节长度（大端序）
+        for (int i = 0; i < 8; i++)
+        {
+            frame_buf[2 + i] = (data_len >> (56 - i * 8)) & 0xFF;
+        }
+        mask_offset = 10;
+    }
+    
+    //? 生成随机掩码
+    uint8_t mask[4];
+    for (int i = 0; i < 4; ++i) 
+    {
+        mask[i] = esp_random() & 0xFF;
+    }
+    memcpy(&frame_buf[mask_offset], mask, 4);
+    
+    //? 对数据进行掩码处理
+    int data_offset = mask_offset + 4;
+    for (size_t i = 0; i < data_len; ++i) 
+    {
+        frame_buf[data_offset + i] = data[i] ^ mask[i % 4];
+    }
+    
+    return data_offset + data_len;
+}
 
 //? 组包 WebSocket 文本帧，返回帧长度
 static size_t build_websocket_frame(const char *msg, uint8_t *frame_buf, size_t buf_size) 
@@ -169,7 +250,7 @@ static int websocket_handshake(const char *uri)
 //? WebSocket发送任务
 static void wss_send_task(void *param)
 {
-    uint8_t frame_buf[256] = {0};
+    int send_count = 0;
     
     while (1)
     {
@@ -177,28 +258,43 @@ static void wss_send_task(void *param)
         if (g_websocket_sock < 0)
         {
             vTaskDelay(pdMS_TO_TICKS(100));
+            send_count = 0;  // 重置计数器
             continue;
         }
         
-        //? 发送消息到服务器
-        const char *msg = "hello";
-        size_t frame_len = build_websocket_frame(msg, frame_buf, sizeof(frame_buf));
-        if (frame_len > 0) 
+        //? 从队列读取完整音频帧（阻塞，超时100ms）
+        if (xQueueReceive(audio_data_queue, g_send_audio_buffer, pdMS_TO_TICKS(100)) == pdTRUE)
         {
-            int ret = send(g_websocket_sock, frame_buf, frame_len, 0);
-            if (ret > 0)
+            //? 将音频数据封装成WebSocket二进制帧
+            size_t frame_len = build_websocket_binary_frame(g_send_audio_buffer, 2048, g_send_frame_buffer, 2200);
+            if (frame_len > 0) 
             {
-                ESP_LOGI(TAG, "Sent: %s", msg);
+                int ret = send(g_websocket_sock, g_send_frame_buffer, frame_len, 0);
+                if (ret > 0)
+                {
+                    send_count++;
+                    if (send_count % 50 == 0)  // 每 50 个包打印一次日志
+                    {
+                        ESP_LOGI(TAG, "Sent %d audio frames (frame_len=%zu, data_size=2048)", send_count, frame_len);
+                    }
+                }
+                else
+                {
+                    ESP_LOGE(TAG, "Send failed after %d packets, errno: %d", send_count, errno);
+                    g_websocket_sock = -1;  // 标记连接断开，触发重连
+                }
             }
             else
             {
-                ESP_LOGE(TAG, "Send failed, errno: %d", errno);
-                g_websocket_sock = -1;  // 标记连接断开，触发重连
+                ESP_LOGE(TAG, "Failed to build WebSocket frame");
             }
+            vTaskDelay(pdMS_TO_TICKS(3));
         }
-        
-        //? 增加发送间隔，降低网络任务对音频任务的影响
-        vTaskDelay(pdMS_TO_TICKS(WSS_SEND_INTERVAL_MS));
+        else
+        {
+            //? 队列为空，避免空转占用CPU
+            vTaskDelay(pdMS_TO_TICKS(50));
+        }
     }
     
     ESP_LOGI(TAG, "wss_send_task ended");
@@ -208,7 +304,7 @@ static void wss_send_task(void *param)
 //? WebSocket接收任务
 static void wss_recv_task(void *param)
 {
-    char recv_buf[256] = {0};
+    int recv_count = 0;
     
     while (1)
     {
@@ -219,25 +315,135 @@ static void wss_recv_task(void *param)
             continue;
         }
         
-        //? 接收服务器返回的消息
+        //? 接收服务器返回的消息（回显的音频数据）
         uint8_t hdr[2];
         int r = recv(g_websocket_sock, hdr, 2, 0);
         if (r <= 0) 
         {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                vTaskDelay(pdMS_TO_TICKS(10));
+                continue;
+            }
             ESP_LOGW(TAG, "Connection closed by server, errno: %d", errno);
             g_websocket_sock = -1;  // 标记连接断开，触发重连
             continue;  // 继续循环，等待重连
         }
         
         //? 解析WebSocket帧头
+        uint8_t opcode = hdr[0] & 0x0F;
         int payload_len = hdr[1] & 0x7F;
-        if (payload_len > 0 && payload_len < sizeof(recv_buf)) 
+        
+        //? 处理扩展长度（如果 payload_len == 126 或 127）
+        if (payload_len == 126) 
         {
-            memset(recv_buf, 0, sizeof(recv_buf));
-            r = recv(g_websocket_sock, recv_buf, payload_len, 0);
-            if (r > 0 && g_config && g_config->on_message) 
+            uint8_t len_ext[2];
+            r = recv(g_websocket_sock, len_ext, 2, 0);
+            if (r != 2) continue;
+            payload_len = (len_ext[0] << 8) | len_ext[1];
+        }
+        else if (payload_len == 127)
+        {
+            //? 跳过 8 字节长度（不支持超大帧）
+            uint8_t len_ext[8];
+            recv(g_websocket_sock, len_ext, 8, 0);
+            ESP_LOGW(TAG, "Payload too large, skipping");
+            continue;
+        }
+        
+        //? 接收数据（分块接收大数据）
+        if (payload_len > 0 && payload_len <= 2200) 
+        {
+            int received = 0;
+            while (received < payload_len)
             {
-                g_config->on_message(recv_buf, r);
+                r = recv(g_websocket_sock, g_recv_buffer + received, payload_len - received, 0);
+                if (r <= 0) 
+                {
+                    //? 检查是否是临时错误
+                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    {
+                        vTaskDelay(pdMS_TO_TICKS(10));
+                        continue;  // 继续尝试接收
+                    }
+                    ESP_LOGE(TAG, "Recv data failed, errno: %d", errno);
+                    g_websocket_sock = -1;
+                    break;
+                }
+                received += r;
+            }
+            
+            if (received == payload_len)
+            {
+                //? 根据 opcode 处理数据
+                if (opcode == 0x01)  // 文本帧
+                {
+                    if (g_config && g_config->on_message) 
+                    {
+                        g_recv_buffer[received] = 0;  // 添加字符串结束符
+                        g_config->on_message((char *)g_recv_buffer, received);
+                    }
+                }
+                else if (opcode == 0x02)  // 二进制帧（回显的音频数据）
+                {
+                    recv_count++;
+                    
+                    //? 添加详细日志，诊断接收的数据大小
+                    // if (recv_count <= 5 || recv_count % 50 == 0) {
+                    //     ESP_LOGI(TAG, "Recv frame #%d: opcode=0x%02X, payload_len=%d bytes", 
+                    //              recv_count, opcode, received);
+                    // }
+                    
+                    //? 只处理完整的2048字节音频帧
+                    if (received == 2048) {
+                        //? 将完整音频帧放入播放队列
+                        if (audio_playback_queue != NULL) {
+                            //? 发送到播放队列，如果队列满则等待50ms
+                            if (xQueueSend(audio_playback_queue, g_recv_buffer, pdMS_TO_TICKS(50)) != pdPASS) {
+                                ESP_LOGW(TAG, "Playback queue full, dropping audio frame");
+                            } else {
+                                // if (recv_count % 50 == 0) {
+                                //     ESP_LOGI(TAG, "Successfully queued %d audio frames for playback", recv_count);
+                                // }
+                            }
+                        } else {
+                            ESP_LOGW(TAG, "Playback queue is NULL!");
+                        }
+                    } else {
+                        //? 打印前几次的不匹配情况，帮助诊断
+                        if (recv_count <= 10) {
+                            ESP_LOGW(TAG, "Frame #%d: Unexpected size %d bytes (expected 2048)", 
+                                     recv_count, received);
+                            //? 打印前16字节帮助分析
+                            ESP_LOGW(TAG, "First 16 bytes: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+                                     g_recv_buffer[0], g_recv_buffer[1], g_recv_buffer[2], g_recv_buffer[3],
+                                     g_recv_buffer[4], g_recv_buffer[5], g_recv_buffer[6], g_recv_buffer[7],
+                                     g_recv_buffer[8], g_recv_buffer[9], g_recv_buffer[10], g_recv_buffer[11],
+                                     g_recv_buffer[12], g_recv_buffer[13], g_recv_buffer[14], g_recv_buffer[15]);
+                        } else if (recv_count % 50 == 0) {
+                            ESP_LOGW(TAG, "Still receiving wrong size: %d bytes", received);
+                        }
+                    }
+                }
+                else if (opcode == 0x08)  // 关闭帧
+                {
+                    ESP_LOGW(TAG, "Server sent close frame");
+                    g_websocket_sock = -1;
+                }
+            }
+        }
+        else if (payload_len > 2200)
+        {
+            //? 数据过大，分批丢弃
+            ESP_LOGW(TAG, "Payload too large (%d bytes), discarding", payload_len);
+            uint8_t tmp[128];
+            int remaining = payload_len;
+            while (remaining > 0)
+            {
+                int to_read = (remaining > sizeof(tmp)) ? sizeof(tmp) : remaining;
+                r = recv(g_websocket_sock, tmp, to_read, 0);
+                if (r <= 0) break;
+                remaining -= r;
             }
         }
     }
@@ -333,11 +539,11 @@ void wss_client_start(const wss_client_config_t *config)
     ESP_LOGI(TAG, "wss_client_task created");
     
     //? 创建发送任务（持久运行，自动适应连接状态）
-    xTaskCreatePinnedToCore(wss_send_task, "wss_send", 4096, NULL, 3, NULL, 1);
+    xTaskCreatePinnedToCore(wss_send_task, "wss_send", 4096, NULL, 10, NULL, 1);
     ESP_LOGI(TAG, "wss_send_task created");
     
     //? 创建接收任务（持久运行，自动适应连接状态）
-    xTaskCreatePinnedToCore(wss_recv_task, "wss_recv", 4096, NULL, 3, NULL, 1);
+    xTaskCreatePinnedToCore(wss_recv_task, "wss_recv", 4096, NULL, 10, NULL, 0);
     ESP_LOGI(TAG, "wss_recv_task created");
 }
 

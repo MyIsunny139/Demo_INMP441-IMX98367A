@@ -1,6 +1,7 @@
 #include "App_Init.h"
 
-QueueHandle_t audio_data_queue = NULL;    // Queue for audio data transmission
+QueueHandle_t audio_data_queue = NULL;      // 麦克风 → WebSocket
+QueueHandle_t audio_playback_queue = NULL;  // WebSocket → 扬声器
 
 void app_init()
 {

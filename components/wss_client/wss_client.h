@@ -16,7 +16,7 @@
 
 //? WebSocket服务器URI（仅支持ws://，不支持wss://）
 #ifndef WSS_URI
-#define WSS_URI         "ws://124.222.6.60:8800"
+#define WSS_URI         "ws://192.168.0.63:8080/websocket/1"
 #endif
 
 //? WebSocket连接超时（秒）
