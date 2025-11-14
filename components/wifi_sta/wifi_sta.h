@@ -10,7 +10,7 @@
 
 //? WiFi SSID和密码
 #ifndef WIFI_SSID
-#define WIFI_SSID       "MY_AP"
+#define WIFI_SSID       "MY_2.4G"
 #endif
 
 #ifndef WIFI_PASS

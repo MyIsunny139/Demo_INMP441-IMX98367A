@@ -65,10 +65,16 @@ void i2s_read_task(void *pvParameters)
             if (avg_energy > AUDIO_ENERGY_THRESHOLD) {
                 //? 2. 应用音量增益（只对有效音频增益）
                 max98367a_apply_gain(buf, bytes_read);
-                
+                // for(int i=0;i<bytes_read;i++)
+                // {
+                //     printf("%d ",buf[i]);
+                // }
+                // printf("\r\n");
+
                 //? 3. 发送完整音频数据到队列（2048字节完整DMA帧）
                 if (audio_data_queue != NULL) {
                     //? 非阻塞方式发送完整缓冲区
+
                     if (xQueueSend(audio_data_queue, buf, 0) != pdPASS) {
                         //? 队列满，丢弃数据（优先保证实时性）
                         // ESP_LOGW("AUDIO", "Queue full, dropping audio frame");

@@ -388,12 +388,6 @@ static void wss_recv_task(void *param)
                 {
                     recv_count++;
                     
-                    //? 添加详细日志，诊断接收的数据大小
-                    // if (recv_count <= 5 || recv_count % 50 == 0) {
-                    //     ESP_LOGI(TAG, "Recv frame #%d: opcode=0x%02X, payload_len=%d bytes", 
-                    //              recv_count, opcode, received);
-                    // }
-                    
                     //? 只处理完整的2048字节音频帧
                     if (received == 2048) {
                         //? 将完整音频帧放入播放队列
@@ -403,26 +397,12 @@ static void wss_recv_task(void *param)
                                 ESP_LOGW(TAG, "Playback queue full, dropping audio frame");
                             } else {
                                 // if (recv_count % 50 == 0) {
-                                //     ESP_LOGI(TAG, "Successfully queued %d audio frames for playback", recv_count);
+                                //     ESP_LOGI(TAG, "Received %d audio frames (2048 bytes each)", recv_count);
                                 // }
                             }
-                        } else {
-                            ESP_LOGW(TAG, "Playback queue is NULL!");
                         }
                     } else {
-                        //? 打印前几次的不匹配情况，帮助诊断
-                        if (recv_count <= 10) {
-                            ESP_LOGW(TAG, "Frame #%d: Unexpected size %d bytes (expected 2048)", 
-                                     recv_count, received);
-                            //? 打印前16字节帮助分析
-                            ESP_LOGW(TAG, "First 16 bytes: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-                                     g_recv_buffer[0], g_recv_buffer[1], g_recv_buffer[2], g_recv_buffer[3],
-                                     g_recv_buffer[4], g_recv_buffer[5], g_recv_buffer[6], g_recv_buffer[7],
-                                     g_recv_buffer[8], g_recv_buffer[9], g_recv_buffer[10], g_recv_buffer[11],
-                                     g_recv_buffer[12], g_recv_buffer[13], g_recv_buffer[14], g_recv_buffer[15]);
-                        } else if (recv_count % 50 == 0) {
-                            ESP_LOGW(TAG, "Still receiving wrong size: %d bytes", received);
-                        }
+                        ESP_LOGW(TAG, "Received incomplete audio frame: %d bytes (expected 2048)", received);
                     }
                 }
                 else if (opcode == 0x08)  // 关闭帧
